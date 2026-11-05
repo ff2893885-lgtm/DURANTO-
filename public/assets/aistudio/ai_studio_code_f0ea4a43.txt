@@ -1,0 +1,358 @@
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:video_player/video_player.dart';
+
+void main() {
+  runApp(const MotionLabProApp());
+}
+
+class MotionLabProApp extends StatelessWidget {
+  const MotionLabProApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'MotionLab Pro - Durango Era',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF141414),
+        primaryColor: const Color(0xFF0088FF),
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFF0088FF),
+          surface: Color(0xFF1E1E1E),
+        ),
+      ),
+      home: const MotionEditorScreen(),
+    );
+  }
+}
+
+class MotionEditorScreen extends StatefulWidget {
+  const MotionEditorScreen({super.key});
+
+  @override
+  State<MotionEditorScreen> createState() => _MotionEditorScreenState();
+}
+
+class _MotionEditorScreenState extends State<MotionEditorScreen> {
+  VideoPlayerController? _videoController;
+  final ImagePicker _picker = ImagePicker();
+
+  // Control sliders
+  double _slowMoSpeed = 0.5;
+  double _saturation = 1.0;
+  double _contrast = 1.0;
+  double _brightness = 0.0;
+  int _selectedTab = 0; // 0: SlowMo, 1: Color Correction, 2: FX
+
+  @override
+  void dispose() {
+    _videoController?.dispose();
+    super.dispose();
+  }
+
+  // Pick video from gallery
+  Future<void> _pickVideo() async {
+    final XFile? file = await _picker.pickVideo(source: ImageSource.gallery);
+    if (file != null) {
+      _videoController?.dispose();
+      _videoController = VideoPlayerController.file(File(file.path))
+        ..initialize().then((_) {
+          _videoController!.setLooping(true);
+          _videoController!.setPlaybackSpeed(_slowMoSpeed);
+          _videoController!.play();
+          setState(() {});
+        });
+    }
+  }
+
+  // 5x5 Color Matrix for real-time CC preview
+  List<double> _buildColorMatrix() {
+    final c = _contrast;
+    final b = _brightness * 255.0;
+    final t = (1.0 - c) * 128.0 + b;
+
+    final s = _saturation;
+    const lr = 0.2126;
+    const lg = 0.7152;
+    const lb = 0.0722;
+
+    final sr = (1 - s) * lr;
+    final sg = (1 - s) * lg;
+    final sb = (1 - s) * lb;
+
+    return <double>[
+      c * (sr + s), c * sg,       c * sb,       0, t,
+      c * sr,       c * (sg + s), c * sb,       0, t,
+      c * sr,       c * sg,       c * (sb + s), 0, t,
+      0,            0,            0,            1, 0,
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF1E1E1E),
+        elevation: 2,
+        title: const Text(
+          'DURANGO ERA - Motion Engine',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add_photo_alternate, color: Colors.cyanAccent),
+            tooltip: 'Pick Video',
+            onPressed: _pickVideo,
+          ),
+          IconButton(
+            icon: const Icon(Icons.bolt, color: Colors.amberAccent),
+            tooltip: 'Render AI SlowMo',
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('AI SlowMo rendering @ ${_slowMoSpeed.toStringAsFixed(1)}x initiated...'),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.file_upload, color: Colors.greenAccent),
+            tooltip: 'Export',
+            onPressed: () {},
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // 1. Live Preview Window (With Real Color Grading)
+          Expanded(
+            flex: 5,
+            child: Container(
+              margin: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.white12),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    if (_videoController != null && _videoController!.value.isInitialized)
+                      ColorFiltered(
+                        colorFilter: ColorFilter.matrix(_buildColorMatrix()),
+                        child: AspectRatio(
+                          aspectRatio: _videoController!.value.aspectRatio,
+                          child: VideoPlayer(_videoController!),
+                        ),
+                      )
+                    else
+                      InkWell(
+                        onTap: _pickVideo,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.video_collection_outlined, size: 50, color: Colors.white38),
+                            SizedBox(height: 8),
+                            Text('Tap to pick a video from Gallery', style: TextStyle(color: Colors.white54)),
+                          ],
+                        ),
+                      ),
+                    // Video Play/Pause Overlay button
+                    if (_videoController != null && _videoController!.value.isInitialized)
+                      Positioned(
+                        child: IconButton(
+                          iconSize: 44,
+                          color: Colors.white70,
+                          icon: Icon(
+                            _videoController!.value.isPlaying ? Icons.pause_circle_outline : Icons.play_circle_outline,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _videoController!.value.isPlaying
+                                  ? _videoController!.pause()
+                                  : _videoController!.play();
+                            });
+                          },
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // 2. Control Tabs & Sliders
+          Expanded(
+            flex: 3,
+            child: Container(
+              color: const Color(0xFF1E1E1E),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildTabButton('Smooth Slow-Mo', 0),
+                      _buildTabButton('Color Correction', 1),
+                      _buildTabButton('Effects & Glow', 2),
+                    ],
+                  ),
+                  const Divider(height: 1, color: Colors.white12),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                      child: _buildActiveControlPanel(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // 3. Multi-Track Timeline
+          Container(
+            height: 130,
+            color: const Color(0xFF181818),
+            child: Column(
+              children: [
+                Container(
+                  height: 26,
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  color: const Color(0xFF222222),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('TIMELINE LAYERS', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+                      Icon(Icons.layers, size: 16, color: Colors.grey),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.all(8),
+                    children: [
+                      _buildTimelineTrack('Adjustment Layer (CC Glow)', Colors.purpleAccent, 'Applied'),
+                      const SizedBox(height: 4),
+                      _buildTimelineTrack(
+                        'Main Video Track',
+                        Colors.blueAccent,
+                        '${_slowMoSpeed.toStringAsFixed(1)}x Speed',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabButton(String title, int index) {
+    final isActive = _selectedTab == index;
+    return TextButton(
+      onPressed: () => setState(() => _selectedTab = index),
+      child: Text(
+        title,
+        style: TextStyle(
+          color: isActive ? Colors.cyanAccent : Colors.grey,
+          fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActiveControlPanel() {
+    if (_selectedTab == 0) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text('Optical Flow / Playback Speed', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+          Row(
+            children: [
+              Expanded(
+                child: Slider(
+                  value: _slowMoSpeed,
+                  min: 0.1,
+                  max: 1.0,
+                  divisions: 9,
+                  label: '${_slowMoSpeed.toStringAsFixed(1)}x',
+                  onChanged: (val) {
+                    setState(() {
+                      _slowMoSpeed = val;
+                      _videoController?.setPlaybackSpeed(_slowMoSpeed);
+                    });
+                  },
+                ),
+              ),
+              Text('${_slowMoSpeed.toStringAsFixed(1)}x', style: const TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const Text('Quality: Ultra Smooth Motion Vector', style: TextStyle(fontSize: 11, color: Colors.grey)),
+        ],
+      );
+    } else if (_selectedTab == 1) {
+      return ListView(
+        physics: const ClampingScrollPhysics(),
+        children: [
+          _buildSliderRow('Saturation', _saturation, 0.0, 2.0, (v) => setState(() => _saturation = v)),
+          _buildSliderRow('Contrast', _contrast, 0.5, 2.0, (v) => setState(() => _contrast = v)),
+          _buildSliderRow('Brightness', _brightness, -0.5, 0.5, (v) => setState(() => _brightness = v)),
+        ],
+      );
+    } else {
+      return Center(
+        child: Wrap(
+          spacing: 10,
+          children: [
+            Chip(label: const Text('Cyan Glow'), backgroundColor: Colors.cyan.withValues(alpha: 0.2)),
+            Chip(label: const Text('Sharpen 4K'), backgroundColor: Colors.blue.withValues(alpha: 0.2)),
+            Chip(label: const Text('Motion Blur'), backgroundColor: Colors.purple.withValues(alpha: 0.2)),
+          ],
+        ),
+      );
+    }
+  }
+
+  Widget _buildSliderRow(String label, double value, double min, double max, ValueChanged<double> onChanged) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.0),
+      child: Row(
+        children: [
+          SizedBox(width: 80, child: Text(label, style: const TextStyle(fontSize: 12, color: Colors.white70))),
+          Expanded(child: Slider(value: value, min: min, max: max, onChanged: onChanged)),
+          SizedBox(width: 35, child: Text(value.toStringAsFixed(2), style: const TextStyle(fontSize: 11, color: Colors.grey))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimelineTrack(String title, Color color, String badge) {
+    return Container(
+      height: 28,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 11, color: Colors.white)),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(4)),
+            child: Text(badge, style: const TextStyle(fontSize: 9, color: Colors.white70)),
+          ),
+        ],
+      ),
+    );
+  }
+}

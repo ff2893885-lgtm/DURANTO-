@@ -1,0 +1,32 @@
+{
+  "id": "/",
+  "name": "DURANTO - Motion Engine",
+  "short_name": "DURANTO",
+  "description": "Professional 120 FPS video motion engine featuring After Effects optical flow slow-motion, real-time color grading, and motion blur.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#141414",
+  "theme_color": "#141414",
+  "icons": [
+    {
+      "src": "/assets/aistudio/ChatGPT_Image_Sep_23__2026__11_46_58_AM_304c70b5.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/aistudio/ChatGPT_Image_Sep_23__2026__11_46_58_AM_304c70b5.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/aistudio/ChatGPT_Image_Sep_23__2026__11_46_58_AM_304c70b5.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

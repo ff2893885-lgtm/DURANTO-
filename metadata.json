@@ -1,0 +1,6 @@
+{
+  "name": "DURANTO - Motion Engine",
+  "description": "Professional video motion engine featuring AI optical flow slow-motion, real-time 5x5 color matrix grading, multi-track timeline, and cinematic glow effects.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

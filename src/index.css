@@ -1,0 +1,44 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+  
+  .font-mono, [data-mono] {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Custom sleek studio scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #141414;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a2a2a;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+/* Range input styling for precision studio sliders */
+input[type="range"] {
+  accent-color: #0088ff;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  cursor: pointer;
+  height: 14px;
+  width: 14px;
+  border-radius: 50%;
+  background: #00d2ff;
+  box-shadow: 0 0 6px rgba(0, 210, 255, 0.6);
+  border: 1px solid #ffffff;
+}
